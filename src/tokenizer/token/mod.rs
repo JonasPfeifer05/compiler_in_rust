@@ -13,7 +13,7 @@ pub enum Token {
     EOF,
     Ignored,
 
-    Keyword { literal: Literal },
+    Keyword { keyword: Keyword },
 
     Literal {
         type_: LiteralType,
@@ -44,9 +44,9 @@ impl Display for Token {
         match self {
             Token::EOF => f.write_str("eof"),
             Token::Ignored => f.write_str(""),
-            Token::Keyword { literal } => {
+            Token::Keyword { keyword } => {
                 f.write_str("keyword ").unwrap();
-                f.write_str(&literal_to_string(literal))
+                f.write_str(&keyword.to_string())
             },
             Token::Literal { value, type_ } => {
                 f.write_str(&type_.to_string()).unwrap();
@@ -62,6 +62,23 @@ impl Display for Token {
             Token::ClosedParent => f.write_char(')'),
             Token::OpenBracket => f.write_char('['),
             Token::ClosedBracket => f.write_char(']'),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub enum Keyword {
+    Let,
+    Exit,
+    Print
+}
+
+impl Display for Keyword {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Keyword::Let => f.write_str("let"),
+            Keyword::Exit => f.write_str("exit"),
+            Keyword::Print => f.write_str("print"),
         }
     }
 }

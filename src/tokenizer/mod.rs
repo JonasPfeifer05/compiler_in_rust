@@ -1,9 +1,9 @@
 use anyhow::bail;
 use lazy_static::lazy_static;
 use regex::Regex;
-use crate::tokenizer::token::{Literal, LiteralType, Operator, Token, TypeType};
+use crate::tokenizer::token::{Keyword, Literal, LiteralType, Operator, Token, TypeType};
 
-mod token;
+pub mod token;
 
 lazy_static! {
     static ref IGNORABLE: [char; 3] = [' ', '\n', '\r'];
@@ -81,7 +81,12 @@ impl Tokenizer {
 
         return match literal.as_slice() {
             b"exit" | b"let" | b"print" => Token::Keyword {
-                literal
+                keyword: match literal.as_slice() {
+                    b"let" => Keyword::Let,
+                    b"exit" => Keyword::Exit,
+                    b"print" => Keyword::Print,
+                    _ => unreachable!()
+                }
             },
             b"u64" | b"char" => Token::Type {
                 type_: match literal.as_slice() {
