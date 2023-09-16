@@ -48,16 +48,18 @@ impl Parser {
         } else {
             return None;
         };
+        if let Token::Colon = &self.tokens.remove(0) {} else { return None; }
+        let type_ = if let Token::Type { type_ } = self.tokens.remove(0) { type_ } else { return None; };
         if let Token::Operation { operator: Operator::Assign } = self.tokens.remove(0) {} else { return None; }
 
         if let Token::Semicolon = &self.tokens[0] {
-            return Some(Statement::Let { identifier, expression: None });
+            return Some(Statement::Let { identifier, type_, expression: None });
         }
 
         let expression = self.parse_expression();
         if let Token::Semicolon = self.tokens.remove(0) {} else { return None; }
 
-        Some(Statement::Let { identifier, expression })
+        Some(Statement::Let { identifier, type_, expression })
     }
 
     fn parse_exit(&mut self) -> Option<Statement> {
