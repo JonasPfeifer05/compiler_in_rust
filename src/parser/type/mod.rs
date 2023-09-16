@@ -1,12 +1,11 @@
 use std::fmt::{Display, Formatter, Write};
-use crate::tokenizer::token::{Literal, literal_to_string};
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Clone)]
 pub enum ValueType {
     U64,
     Char,
     Pointer { points_to: Box<Self> },
-    Array { content_type: Box<Self>, len: Literal }
+    Array { content_type: Box<Self>, len: usize }
 }
 
 impl Display for ValueType {
@@ -22,7 +21,7 @@ impl Display for ValueType {
                 f.write_char('[').unwrap();
                 f.write_str(&content_type.to_string()).unwrap();
                 f.write_str(", ").unwrap();
-                f.write_str(&literal_to_string(len)).unwrap();
+                f.write_str(&len.to_string()).unwrap();
                 f.write_char(']')
             }
         }

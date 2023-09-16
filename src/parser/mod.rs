@@ -80,7 +80,7 @@ impl Parser {
             Some(
                 ValueType::Array {
                     content_type: Box::new(type_),
-                    len,
+                    len: String::from_utf8_lossy(len.as_slice()).parse::<usize>().unwrap(),
                 }
             )
         } else { None };
@@ -112,9 +112,9 @@ impl Parser {
 
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
         let mut left_expression = match self.tokens.remove(0) {
-            Token::Literal { type_: LiteralType::Identifier, value } => Expression::IdentifierLiteral { value },
+            Token::Literal { type_: LiteralType::Identifier, value } => Expression::IdentifierLiteral { value, type_: None },
             Token::Literal { type_: LiteralType::Number, value } => Expression::NumberLiteral { value },
-            Token::Literal { type_: LiteralType::Char, value } => Expression::NumberLiteral { value },
+            Token::Literal { type_: LiteralType::Char, value } => Expression::CharLiteral { value },
             Token::Literal { type_: LiteralType::String, value } => Expression::Array { content: Self::string_to_char_array(value) },
             Token::Operation { operator } => self.parse_prefix_expression(operator).unwrap(),
             Token::OpenParent => self.parse_grouped().unwrap(),
@@ -170,6 +170,7 @@ impl Parser {
                 operator,
                 rhs:
                 Box::new(right),
+                type_: None,
             }
         )
     }

@@ -5,4 +5,10 @@ let character: char = 'c';
 
 let array: [u64, 3] = [1,2,3];
 
+// TODO
+let c = array[0];
+
+// TODO
+let array[0] = 10;
+
 let name: [char, 6] = "Jonas\n";

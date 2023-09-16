@@ -1,3 +1,4 @@
+use crate::parser::r#type::ValueType;
 use crate::tokenizer::token::{Literal, Operator};
 
 #[derive(Debug)]
@@ -7,6 +8,7 @@ pub enum Expression {
     },
     IdentifierLiteral {
         value: Literal,
+        type_: Option<ValueType>,
     },
     CharLiteral {
         value: Literal,
@@ -15,9 +17,10 @@ pub enum Expression {
         lhs: Box<Expression>,
         operator: Operator,
         rhs: Box<Expression>,
+        type_: Option<ValueType>,
     },
     Array {
-        content: Vec<Expression>
+        content: Vec<Expression>,
     },
     Deref {
         value: Box<Expression>
