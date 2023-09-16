@@ -54,18 +54,26 @@ impl Parser {
             return Some(Statement::Let { identifier, expression: None });
         }
 
-        let expression = self.parse_expression().unwrap();
+        let expression = self.parse_expression();
         if let Token::Semicolon = self.tokens.remove(0) {} else { return None; }
 
-        Some(Statement::Let { identifier, expression: Some(expression) })
+        Some(Statement::Let { identifier, expression })
     }
 
     fn parse_exit(&mut self) -> Option<Statement> {
-        todo!()
+        if let Token::OpenParent = self.tokens.remove(0) {} else { return None; }
+        let expression = self.parse_expression().unwrap();
+        if let Token::ClosedParent = self.tokens.remove(0) {} else { return None; }
+
+        Some(Statement::Exit { expression })
     }
 
     fn parse_print(&mut self) -> Option<Statement> {
-        todo!()
+        if let Token::OpenParent = self.tokens.remove(0) {} else { return None; }
+        let expression = self.parse_expression().unwrap();
+        if let Token::ClosedParent = self.tokens.remove(0) {} else { return None; }
+
+        Some(Statement::Print { expression })
     }
 
     fn parse_assign(&mut self, identifier: Literal) -> Option<Statement> {
