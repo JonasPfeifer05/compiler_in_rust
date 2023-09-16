@@ -1,11 +1,12 @@
-mod tokenizer;
-mod parser;
+pub mod tokenizer;
+pub mod parser;
 
 use std::fs;
 use crate::parser::Parser;
 use crate::tokenizer::Tokenizer;
 
 fn main() {
+
     let input: Vec<_> = fs::read("res/script.he").expect("Unknown file!")
         .iter()
         .map(|char| *char as char)
@@ -15,6 +16,8 @@ fn main() {
 
     tokens.iter()
         .for_each(|token| println!("{}", token));
+
+    println!();
 
     let statements = Parser::new(tokens).parse_statements();
 

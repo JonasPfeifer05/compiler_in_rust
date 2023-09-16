@@ -7,7 +7,8 @@ pub mod token;
 
 lazy_static! {
     static ref IGNORABLE: [char; 3] = [' ', '\n', '\r'];
-    static ref LITERAL_REGEX: Regex = Regex::new(r"[a-zA-Z_]").unwrap();
+    static ref LITERAL_START_REGEX: Regex = Regex::new(r"[a-zA-Z_]").unwrap();
+    static ref LITERAL_REGEX: Regex = Regex::new(r"[a-zA-Z0-9_]").unwrap();
     static ref NUMBER_REGEX: Regex = Regex::new(r"[0-9]").unwrap();
 }
 
@@ -41,8 +42,8 @@ impl Tokenizer {
 
         let token = unsafe {
             match self.input.get_unchecked(0) {
-                &',' | &':' | &';' | &'+' | &'-' | &'*' | &'/' | &'&' | &'=' => self.tokenize_singe_symbol(),
-                c if LITERAL_REGEX.is_match(&c.to_string()) => self.tokenize_identifier(),
+                &',' | &':' | &';' | &'+' | &'-' | &'*' | &'/' | &'&' | &'=' | &'(' | &')' | &'[' | &']' => self.tokenize_singe_symbol(),
+                c if LITERAL_START_REGEX.is_match(&c.to_string()) => self.tokenize_identifier(),
                 c if NUMBER_REGEX.is_match(&c.to_string()) => self.tokenize_number(),
                 &'\'' => self.tokenize_char(),
                 &'"' => self.tokenize_string(),
@@ -70,6 +71,10 @@ impl Tokenizer {
                     _ => unreachable!()
                 }
             },
+            '(' => Token::OpenParent,
+            ')' => Token::ClosedParent,
+            '[' => Token::OpenBracket,
+            ']' => Token::ClosedBracket,
             _ => unreachable!()
         };
     }

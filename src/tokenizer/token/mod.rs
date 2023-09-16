@@ -1,10 +1,9 @@
 use std::fmt::{Display, Formatter, Write};
-use std::mem;
 use serde::{Deserialize, Serialize};
 
 pub type Literal = Vec<u8>;
 
-fn literal_to_string(literal: &Literal) -> String {
+pub fn literal_to_string(literal: &Literal) -> String {
     String::from_utf8_lossy(literal.as_slice()).parse().unwrap()
 }
 
