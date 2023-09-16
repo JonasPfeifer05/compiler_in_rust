@@ -5,16 +5,16 @@ use crate::tokenizer::token::Literal;
 pub enum Statement {
     Let {
         identifier: Literal,
-        value: Option<Expression>
+        expression: Option<Expression>
     },
     Assign {
         identifier: Literal,
-        value: Expression,
+        expression: Expression,
     },
     Exit {
-        value: Expression,
+        expression: Expression,
     },
     Print {
-        value: Expression,
+        expression: Expression,
     },
 }

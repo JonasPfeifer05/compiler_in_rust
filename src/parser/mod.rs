@@ -1,5 +1,6 @@
+use crate::parser::expr::Expression;
 use crate::parser::stmt::Statement;
-use crate::tokenizer::token::{LiteralType, Token};
+use crate::tokenizer::token::{Keyword, Literal, LiteralType, Operator, Token};
 
 pub mod expr;
 pub mod stmt;
@@ -26,15 +27,57 @@ impl Parser {
     }
     fn parse_statement(&mut self) -> Option<Statement> {
         if let Some(Token::Keyword { keyword }) = self.get_keyword() {
-            todo!()
+            match keyword {
+                Keyword::Let => self.parse_let(),
+                Keyword::Exit => self.parse_exit(),
+                Keyword::Print => self.parse_print(),
+            }
         } else if let Token::Literal {
             type_: LiteralType::Identifier,
             value
-        } = &self.tokens[0] {
-            todo!()
+        } = self.tokens.remove(0) {
+            self.parse_assign(value)
         } else {
             None
         }
+    }
+
+    fn parse_let(&mut self) -> Option<Statement> {
+        let identifier = if let Some(Token::Literal { type_: LiteralType::Identifier, value }) = self.get_literal() {
+            value
+        } else {
+            return None;
+        };
+        if let Token::Operation { operator: Operator::Assign } = self.tokens.remove(0) {} else { return None; }
+
+        if let Token::Semicolon = &self.tokens[0] {
+            return Some(Statement::Let { identifier, expression: None });
+        }
+
+        let expression = self.parse_expression().unwrap();
+        if let Token::Semicolon = self.tokens.remove(0) {} else { return None; }
+
+        Some(Statement::Let { identifier, expression: Some(expression) })
+    }
+
+    fn parse_exit(&mut self) -> Option<Statement> {
+        todo!()
+    }
+
+    fn parse_print(&mut self) -> Option<Statement> {
+        todo!()
+    }
+
+    fn parse_assign(&mut self, identifier: Literal) -> Option<Statement> {
+        if let Token::Operation { operator: Operator::Assign } = self.tokens.remove(0) {} else { return None; }
+        let expression = self.parse_expression().unwrap();
+        if let Token::Semicolon = self.tokens.remove(0) {} else { return None; }
+
+        Some(Statement::Assign { identifier, expression })
+    }
+
+    fn parse_expression(&mut self) -> Option<Expression> {
+        todo!()
     }
 
     fn get_keyword(&mut self) -> Option<Token> {
