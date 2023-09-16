@@ -1,6 +1,7 @@
 use crate::parser::expr::Expression;
 use crate::tokenizer::token::Literal;
 
+#[derive(Debug)]
 pub enum Statement {
     Let {
         identifier: Literal,

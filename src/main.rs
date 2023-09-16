@@ -2,6 +2,7 @@ mod tokenizer;
 mod parser;
 
 use std::fs;
+use crate::parser::Parser;
 use crate::tokenizer::Tokenizer;
 
 fn main() {
@@ -13,5 +14,10 @@ fn main() {
     let tokens = Tokenizer::new(input).tokenize();
 
     tokens.iter()
-        .for_each(|token| println!("{}", token))
+        .for_each(|token| println!("{}", token));
+
+    let statements = Parser::new(tokens).parse_statements();
+
+    statements.iter()
+        .for_each(|statement| println!("{:?}", statement));
 }

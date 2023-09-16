@@ -139,7 +139,3 @@ impl Display for Operator {
         }
     }
 }
-
-pub fn equals_variant<T>(t1: &T, t2: &T) -> bool {
-    mem::discriminant(t1) == mem::discriminant(t2)
-}

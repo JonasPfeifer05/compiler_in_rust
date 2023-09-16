@@ -1,5 +1,6 @@
 use crate::tokenizer::token::{Literal, Operator};
 
+#[derive(Debug)]
 pub enum Expression {
     NumberLiteral {
         value: Literal,
