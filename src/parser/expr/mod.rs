@@ -26,6 +26,7 @@ pub enum Expression {
         value: Box<Expression>
     },
     Access {
-        value: Box<Expression>
+        value: Box<Expression>,
+        index: Box<Expression>,
     }
 }

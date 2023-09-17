@@ -1,3 +1,4 @@
+use std::hint::unreachable_unchecked;
 use crate::parser::expr::Expression;
 use crate::parser::r#type::ValueType;
 use crate::parser::stmt::Statement;
@@ -37,8 +38,8 @@ impl Parser {
         } else if let Token::Literal {
             type_: LiteralType::Identifier,
             value
-        } = self.tokens.remove(0) {
-            self.parse_assign(value)
+        } = &self.tokens[0] {
+            self.parse_assign()
         } else {
             None
         }
@@ -65,6 +66,15 @@ impl Parser {
     }
 
     fn parse_type(&mut self) -> Option<ValueType> {
+        if let Token::Operation { operator: Operator::And } = &self.tokens[0] {
+            self.tokens.remove(0);
+            return Some(
+                ValueType::Pointer {
+                    points_to: Box::new(self.parse_type().unwrap())
+                }
+            );
+        }
+
         return if let Some(Token::Type { type_ }) = self.get_type() {
             Some(
                 match type_ {
@@ -102,12 +112,14 @@ impl Parser {
         Some(Statement::Print { expression })
     }
 
-    fn parse_assign(&mut self, identifier: Literal) -> Option<Statement> {
+    fn parse_assign(&mut self) -> Option<Statement> {
+        let assignee = self.parse_expression(Precedence::Lowest).unwrap();
+
         if let Token::Operation { operator: Operator::Assign } = self.tokens.remove(0) {} else { return None; }
         let expression = self.parse_expression(Precedence::Lowest).unwrap();
         if let Token::Semicolon = self.tokens.remove(0) {} else { return None; }
 
-        Some(Statement::Assign { identifier, expression })
+        Some(Statement::Assign { assignee, expression })
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
@@ -125,9 +137,13 @@ impl Parser {
         loop {
             if let Some(operator_precedence) = self.peek_precedence() {
                 if !(precedence < operator_precedence) { break; }
-                let operator = if let Some(Token::Operation { operator }) = self.get_operation() { operator } else { return None; };
 
-                let infix = self.parse_infix_expression(left_expression, operator).unwrap();
+                let infix = if let Some(Token::Operation { operator }) = self.get_operation() {
+                    self.parse_infix_expression(left_expression, operator).unwrap()
+                } else if let Token::OpenBracket = self.tokens.remove(0) {
+                    self.parse_access(left_expression).unwrap()
+                } else { return None; };
+
                 left_expression = infix;
             } else { break; }
         }
@@ -163,7 +179,7 @@ impl Parser {
             Operator::Divide => {}
             _ => return None
         }
-        let right = self.parse_expression(operator.get_precedence()).unwrap();
+        let right = self.parse_expression(operator.get_precedence().unwrap()).unwrap();
         Some(
             Expression::Operation {
                 lhs: Box::new(left),
@@ -203,6 +219,12 @@ impl Parser {
         Some(Expression::Array { content })
     }
 
+    fn parse_access(&mut self, left: Expression) -> Option<Expression> {
+        let expression = self.parse_expression(Precedence::Lowest).unwrap();
+        if let Token::ClosedBracket = self.tokens.remove(0) {} else { return None; }
+        Some(Expression::Access { value: Box::new(left), index: Box::new(expression) })
+    }
+
     fn get_keyword(&mut self) -> Option<Token> {
         match &self.tokens[0] {
             Token::Keyword { .. } => Some(self.tokens.remove(0)),
@@ -232,10 +254,7 @@ impl Parser {
     }
 
     fn peek_precedence(&mut self) -> Option<Precedence> {
-        match &self.tokens[0] {
-            Token::Operation { operator } => Some(operator.get_precedence()),
-            _ => None
-        }
+        self.tokens[0].get_precedence()
     }
 }
 
@@ -245,15 +264,30 @@ enum Precedence {
     Sum = 1,
     Product = 2,
     Prefix = 3,
+    Postfix = 4,
+}
+
+impl Token {
+    fn get_precedence(&self) -> Option<Precedence> {
+        match self {
+            Token::Operation {
+                operator
+            } => operator.get_precedence(),
+            Token::OpenBracket => Some(Precedence::Postfix),
+            _ => None
+        }
+    }
 }
 
 impl Operator {
-    fn get_precedence(&self) -> Precedence {
+    fn get_precedence(&self) -> Option<Precedence> {
         match self {
-            Operator::Plus | Operator::Minus => Precedence::Sum,
-            Operator::Times | Operator::Divide => Precedence::Product,
-            Operator::And => Precedence::Prefix,
-            _ => unreachable!()
+            Operator::Plus |
+            Operator::Minus => Some(Precedence::Sum),
+            Operator::Times |
+            Operator::Divide => Some(Precedence::Product),
+            Operator::And => Some(Precedence::Prefix),
+            _ => None
         }
     }
 }

@@ -14,9 +14,12 @@ impl Expression {
                 value.resolve(symbol_table);
                 if let ValueType::Pointer { .. } = value.get_type() {} else { None.unwrap() }
             }
-            Expression::Access { value } => {
+            Expression::Access { value, index } => {
                 value.resolve(symbol_table);
                 if let ValueType::Pointer { .. } = value.get_type() {} else { None.unwrap() }
+
+                index.resolve(symbol_table);
+                if let ValueType::U64 = index.get_type() {} else { None.unwrap() }
             }
             Expression::IdentifierLiteral { value, type_, .. } => {
                 type_.replace(ValueType::Pointer { points_to: Box::new(symbol_table.get(value).clone()) });
@@ -51,12 +54,17 @@ impl Expression {
             Expression::Deref { value } => {
                 if let ValueType::Pointer { points_to } = value.get_type() { *points_to } else { None.unwrap() }
             }
-            Expression::Access { value } => {
-                match value.get_type() {
-                    ValueType::U64 |
-                    ValueType::Char |
-                    ValueType::Pointer { .. } => value.get_type(),
-                    ValueType::Array { content_type, .. } => *content_type
+            Expression::Access { value, .. } => {
+                ValueType::Pointer {
+                    points_to: match value.get_type() {
+                        ValueType::U64 => Box::new(ValueType::U64),
+                        ValueType::Char => Box::new(ValueType::Char),
+                        ValueType::Pointer { points_to } => match points_to.as_ref() {
+                            ValueType::Array { content_type, .. } => content_type.clone(),
+                            _ => points_to.clone(),
+                        },
+                        ValueType::Array { content_type, .. } => content_type.clone()
+                    }
                 }
             }
         }

@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::process::id;
 use crate::parser::expr::Expression;
 use crate::parser::r#type::ValueType;
@@ -9,10 +10,10 @@ pub enum Statement {
     Let {
         identifier: Literal,
         type_: ValueType,
-        expression: Option<Expression>
+        expression: Option<Expression>,
     },
     Assign {
-        identifier: Literal,
+        assignee: Expression,
         expression: Expression,
     },
     Exit {
@@ -33,10 +34,11 @@ impl Statement {
                 }
                 symbol_table.register(identifier.clone(), type_.clone());
             }
-            Statement::Assign { identifier, expression } => {
-                let identifier_type = symbol_table.get(identifier);
+            Statement::Assign { assignee, expression } => {
+                assignee.resolve(symbol_table);
+                let assign_type = if let ValueType::Pointer { points_to } = assignee.get_type() { points_to } else { None.unwrap() };
                 expression.resolve(symbol_table);
-                if identifier_type != &expression.get_type() { None.unwrap() }
+                if assign_type.as_ref() != &expression.get_type() { None.unwrap() }
             }
             Statement::Exit { .. } => {}
             Statement::Print { .. } => {}
