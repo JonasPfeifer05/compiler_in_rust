@@ -1,5 +1,3 @@
-use std::ops::Deref;
-use std::process::id;
 use crate::parser::expr::Expression;
 use crate::parser::r#type::ValueType;
 use crate::semantic_analysis::symbol_table::SymbolTable;

@@ -1,4 +1,3 @@
-use std::hint::unreachable_unchecked;
 use crate::parser::expr::Expression;
 use crate::parser::r#type::ValueType;
 use crate::parser::stmt::Statement;
@@ -37,7 +36,7 @@ impl Parser {
             }
         } else if let Token::Literal {
             type_: LiteralType::Identifier,
-            value
+            ..
         } = &self.tokens[0] {
             self.parse_assign()
         } else {
