@@ -194,6 +194,7 @@ impl Parser {
         let right = self.parse_expression(Precedence::Prefix).unwrap();
         let expression = match operator {
             Operator::Times => Expression::Deref { value: Box::new(right) },
+            Operator::And => Expression::Reference { reference: Box::new(right) },
             _ => return None
         };
 

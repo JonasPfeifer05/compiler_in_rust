@@ -1,2 +1,8 @@
 let array: [u64, 2] = [1,2];
-array[0][1] = 10;
+let test: u64 = array[0];
+let a: &u64 = &array[0];
+let b: u64 = a + array[1];
+
+let c: u64 = 10;
+let d: &u64 = &c;
+let e: u64 = 12 + d;
