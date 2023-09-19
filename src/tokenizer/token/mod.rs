@@ -104,6 +104,9 @@ impl Display for LiteralType {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TypeType {
     U64,
+    U32,
+    U16,
+    U8,
     Char,
 }
 
@@ -112,6 +115,9 @@ impl Display for TypeType {
         match self {
             TypeType::U64 => f.write_str("u64"),
             TypeType::Char => f.write_str("char"),
+            TypeType::U32 => f.write_str("u32"),
+            TypeType::U16 => f.write_str("u16"),
+            TypeType::U8 => f.write_str("u8"),
         }
     }
 }

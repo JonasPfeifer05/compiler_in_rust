@@ -27,7 +27,12 @@ fn main() {
     statements.iter()
         .for_each(|statement| println!("{:?}", statement));
 
+    println!();
+
     let mut symbol_table = SymbolTable::new();
     statements.iter_mut()
         .for_each(|statements| statements.resolve(&mut symbol_table));
+
+    statements.iter()
+        .for_each(|statement| println!("{:?}", statement));
 }

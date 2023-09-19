@@ -93,9 +93,12 @@ impl Tokenizer {
                     _ => unreachable!()
                 }
             },
-            b"u64" | b"char" => Token::Type {
+            b"u64" | b"u32" | b"u16" | b"u8" | b"char" => Token::Type {
                 type_: match literal.as_slice() {
                     b"u64" => TypeType::U64,
+                    b"u32" => TypeType::U32,
+                    b"u16" => TypeType::U16,
+                    b"u8" => TypeType::U8,
                     b"char" => TypeType::Char,
                     _ => unreachable!()
                 }

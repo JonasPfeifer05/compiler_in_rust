@@ -1,7 +1,7 @@
 use crate::parser::expr::Expression;
 use crate::parser::r#type::ValueType;
 use crate::parser::stmt::Statement;
-use crate::tokenizer::token::{Keyword, Literal, LiteralType, Operator, Token, TypeType};
+use crate::tokenizer::token::{Keyword, Literal, literal_to_string, LiteralType, Operator, Token, TypeType};
 
 pub mod expr;
 pub mod stmt;
@@ -34,13 +34,8 @@ impl Parser {
                 Keyword::Exit => self.parse_exit(),
                 Keyword::Print => self.parse_print(),
             }
-        } else if let Token::Literal {
-            type_: LiteralType::Identifier,
-            ..
-        } = &self.tokens[0] {
-            self.parse_assign()
         } else {
-            None
+            self.parse_assign()
         }
     }
 
@@ -78,7 +73,10 @@ impl Parser {
             Some(
                 match type_ {
                     TypeType::U64 => ValueType::U64,
-                    TypeType::Char => ValueType::Char
+                    TypeType::U32 => ValueType::U32,
+                    TypeType::U16 => ValueType::U16,
+                    TypeType::U8 => ValueType::U8,
+                    TypeType::Char => ValueType::Char,
                 }
             )
         } else if let Token::OpenBracket = self.tokens.remove(0) {
@@ -124,7 +122,7 @@ impl Parser {
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
         let mut left_expression = match self.tokens.remove(0) {
             Token::Literal { type_: LiteralType::Identifier, value } => Expression::IdentifierLiteral { value, type_: None },
-            Token::Literal { type_: LiteralType::Number, value } => Expression::NumberLiteral { value },
+            Token::Literal { type_: LiteralType::Number, value } => Self::parse_number_literal(value).unwrap(),
             Token::Literal { type_: LiteralType::Char, value } => Expression::CharLiteral { value },
             Token::Literal { type_: LiteralType::String, value } => Expression::Array { content: Self::string_to_char_array(value) },
             Token::Operation { operator } => self.parse_prefix_expression(operator).unwrap(),
@@ -148,6 +146,20 @@ impl Parser {
         }
 
         Some(left_expression)
+    }
+
+    fn parse_number_literal(value: Literal) -> Option<Expression> {
+        let string_representation = literal_to_string(&value);
+        let type_ = if let Ok(_) = string_representation.parse::<u8>() {
+            ValueType::U8
+        } else if let Ok(_) = string_representation.parse::<u16>() {
+            ValueType::U16
+        } else if let Ok(_) = string_representation.parse::<u32>() {
+            ValueType::U32
+        } else if let Ok(_) = string_representation.parse::<u64>() {
+            ValueType::U64
+        } else { return None; };
+        Some(Expression::NumberLiteral { value, internal_type: type_ })
     }
 
     fn string_to_char_array(string: Literal) -> Vec<Expression> {

@@ -5,6 +5,7 @@ use crate::tokenizer::token::{Literal, Operator};
 pub enum Expression {
     NumberLiteral {
         value: Literal,
+        internal_type: ValueType,
     },
     IdentifierLiteral {
         value: Literal,
@@ -31,5 +32,6 @@ pub enum Expression {
     Access {
         value: Box<Expression>,
         index: Box<Expression>,
-    }
+    },
+    Cast { value: Box<Expression>, to: ValueType },
 }
