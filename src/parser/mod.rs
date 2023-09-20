@@ -1,3 +1,6 @@
+use std::iter::Peekable;
+use std::vec::IntoIter;
+use anyhow::bail;
 use crate::parser::expr::Expression;
 use crate::parser::r#type::ValueType;
 use crate::parser::stmt::Statement;
@@ -8,11 +11,11 @@ pub mod stmt;
 pub mod r#type;
 
 pub struct Parser {
-    tokens: Vec<Token>,
+    tokens: Peekable<IntoIter<Token>>,
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: Peekable<IntoIter<Token>>) -> Self {
         Self {
             tokens
         }
@@ -21,14 +24,14 @@ impl Parser {
     pub fn parse_statements(&mut self) -> Vec<Statement> {
         let mut statements = vec![];
 
-        while !self.tokens.is_empty() {
+        while self.tokens.peek().is_some() {
             statements.push(self.parse_statement().unwrap())
         }
 
         statements
     }
-    fn parse_statement(&mut self) -> Option<Statement> {
-        if let Some(Token::Keyword { keyword }) = self.get_keyword() {
+    fn parse_statement(&mut self) -> anyhow::Result<Statement> {
+        if let Ok(Token::Keyword { keyword }) = self.get_keyword() {
             match keyword {
                 Keyword::Let => self.parse_let(),
                 Keyword::Exit => self.parse_exit(),
@@ -39,38 +42,38 @@ impl Parser {
         }
     }
 
-    fn parse_let(&mut self) -> Option<Statement> {
-        let identifier = if let Some(Token::Literal { type_: LiteralType::Identifier, value }) = self.get_literal() {
+    fn parse_let(&mut self) -> anyhow::Result<Statement> {
+        let identifier = if let Ok(Token::Literal { type_: LiteralType::Identifier, value }) = self.get_literal() {
             value
         } else {
-            return None;
+            bail!("Let statement requires identifier to assign to!")
         };
-        if let Token::Colon = &self.tokens.remove(0) {} else { return None; }
-        let type_ = self.parse_type().unwrap();
-        if let Token::Operation { operator: Operator::Assign } = self.tokens.remove(0) {} else { return None; }
+        if let Token::Colon = self.consume_token()? {} else { bail!("Let statement requires ':' after assignee identifier!") }
+        let type_ = self.parse_type()?;
+        if let Token::Operation { operator: Operator::Assign } = self.consume_token()? {} else { bail!("Let statement requires '=' after the identifier declaration!") }
 
-        if let Token::Semicolon = &self.tokens[0] {
-            return Some(Statement::Let { identifier, type_, expression: None });
+        if let Token::Semicolon = self.peek_token()? {
+            return Ok(Statement::Let { identifier, type_, expression: None });
         }
 
-        let expression = self.parse_expression(Precedence::Lowest).unwrap();
-        if let Token::Semicolon = self.tokens.remove(0) {} else { return None; }
+        let expression = self.parse_expression(Precedence::Lowest)?;
+        if let Token::Semicolon = self.consume_token()? {} else { bail!("Statement didnt end with ';'!") }
 
-        Some(Statement::Let { identifier, type_, expression: Some(expression) })
+        Ok(Statement::Let { identifier, type_, expression: Some(expression) })
     }
 
-    fn parse_type(&mut self) -> Option<ValueType> {
-        if let Token::Operation { operator: Operator::And } = &self.tokens[0] {
-            self.tokens.remove(0);
-            return Some(
+    fn parse_type(&mut self) -> anyhow::Result<ValueType> {
+        if let Token::Operation { operator: Operator::And } = self.peek_token()? {
+            self.consume_token()?;
+            return Ok(
                 ValueType::Pointer {
-                    points_to: Box::new(self.parse_type().unwrap())
+                    points_to: Box::new(self.parse_type()?)
                 }
             );
         }
 
-        return if let Some(Token::Type { type_ }) = self.get_type() {
-            Some(
+        return if let Ok(Token::Type { type_ }) = self.get_type() {
+            Ok(
                 match type_ {
                     TypeType::U64 => ValueType::U64,
                     TypeType::U32 => ValueType::U32,
@@ -79,76 +82,76 @@ impl Parser {
                     TypeType::Char => ValueType::Char,
                 }
             )
-        } else if let Token::OpenBracket = self.tokens.remove(0) {
-            let type_ = self.parse_type().unwrap();
-            if let Token::Comma = self.tokens.remove(0) {} else { return None; }
-            let len = if let Some(Token::Literal { type_: LiteralType::Number, value }) = self.get_literal() { value } else { return None; };
-            if let Token::ClosedBracket = self.tokens.remove(0) {} else { return None; }
-            Some(
+        } else if let Token::OpenBracket = self.consume_token()? {
+            let type_ = self.parse_type()?;
+            if let Token::Comma = self.consume_token()? {} else { bail!("Array type expected comma after internal type descriptor!") }
+            let len = if let Ok(Token::Literal { type_: LiteralType::Number, value }) = self.get_literal() { value } else { bail!("Expected number literal to describe the length of the array!") };
+            if let Token::ClosedBracket = self.consume_token()? {} else { bail!("Array type didnt end with ']'!") }
+            Ok(
                 ValueType::Array {
                     content_type: Box::new(type_),
                     len: String::from_utf8_lossy(len.as_slice()).parse::<usize>().unwrap(),
                 }
             )
-        } else { None };
+        } else { bail!("Got unexpected token for a type!") };
     }
 
-    fn parse_exit(&mut self) -> Option<Statement> {
-        if let Token::OpenParent = self.tokens.remove(0) {} else { return None; }
+    fn parse_exit(&mut self) -> anyhow::Result<Statement> {
+        if let Token::OpenParent = self.consume_token()? {} else { bail!("Expected '(' after function identifier!") }
         let expression = self.parse_expression(Precedence::Lowest).unwrap();
-        if let Token::ClosedParent = self.tokens.remove(0) {} else { return None; }
+        if let Token::ClosedParent = self.consume_token()? {} else { bail!("Expected ')' after function parameters!") }
 
-        Some(Statement::Exit { expression })
+        Ok(Statement::Exit { expression })
     }
 
-    fn parse_print(&mut self) -> Option<Statement> {
-        if let Token::OpenParent = self.tokens.remove(0) {} else { return None; }
-        let expression = self.parse_expression(Precedence::Lowest).unwrap();
-        if let Token::ClosedParent = self.tokens.remove(0) {} else { return None; }
+    fn parse_print(&mut self) -> anyhow::Result<Statement> {
+        if let Token::OpenParent = self.consume_token()? {} else { bail!("Expected '(' after function identifier!") }
+        let expression = self.parse_expression(Precedence::Lowest)?;
+        if let Token::ClosedParent = self.consume_token()? {} else { bail!("Expected ')' after function parameters!") }
 
-        Some(Statement::Print { expression })
+        Ok(Statement::Print { expression })
     }
 
-    fn parse_assign(&mut self) -> Option<Statement> {
-        let assignee = self.parse_expression(Precedence::Lowest).unwrap();
+    fn parse_assign(&mut self) -> anyhow::Result<Statement> {
+        let assignee = self.parse_expression(Precedence::Lowest)?;
 
-        if let Token::Operation { operator: Operator::Assign } = self.tokens.remove(0) {} else { return None; }
-        let expression = self.parse_expression(Precedence::Lowest).unwrap();
-        if let Token::Semicolon = self.tokens.remove(0) {} else { return None; }
+        if let Token::Operation { operator: Operator::Assign } = self.consume_token()? {} else { bail!("Expected '=' after the identifier in let statement!") }
+        let expression = self.parse_expression(Precedence::Lowest)?;
+        if let Token::Semicolon = self.consume_token()? {} else { bail!("Statement didnt end with ';'!") }
 
-        Some(Statement::Assign { assignee, expression })
+        Ok(Statement::Assign { assignee, expression })
     }
 
-    fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
-        let mut left_expression = match self.tokens.remove(0) {
+    fn parse_expression(&mut self, precedence: Precedence) -> anyhow::Result<Expression> {
+        let mut left_expression = match self.consume_token()? {
             Token::Literal { type_: LiteralType::Identifier, value } => Expression::IdentifierLiteral { value, type_: None },
-            Token::Literal { type_: LiteralType::Number, value } => Self::parse_number_literal(value).unwrap(),
+            Token::Literal { type_: LiteralType::Number, value } => Self::parse_number_literal(value)?,
             Token::Literal { type_: LiteralType::Char, value } => Expression::CharLiteral { value },
             Token::Literal { type_: LiteralType::String, value } => Expression::Array { content: Self::string_to_char_array(value) },
-            Token::Operation { operator } => self.parse_prefix_expression(operator).unwrap(),
-            Token::OpenParent => self.parse_grouped().unwrap(),
-            Token::OpenBracket => self.parse_array().unwrap(),
-            _ => return None
+            Token::Operation { operator } => self.parse_prefix_expression(operator)?,
+            Token::OpenParent => self.parse_grouped()?,
+            Token::OpenBracket => self.parse_array()?,
+            _ => bail!("Invalid token found inside expression!")
         };
 
         loop {
-            if let Some(operator_precedence) = self.peek_precedence() {
+            if let Ok(operator_precedence) = self.peek_precedence() {
                 if !(precedence < operator_precedence) { break; }
 
-                let infix = if let Some(Token::Operation { operator }) = self.get_operation() {
-                    self.parse_infix_expression(left_expression, operator).unwrap()
-                } else if let Token::OpenBracket = self.tokens.remove(0) {
-                    self.parse_access(left_expression).unwrap()
-                } else { return None; };
+                let infix = if let Ok(Token::Operation { operator }) = self.get_operation() {
+                    self.parse_infix_expression(left_expression, operator)?
+                } else if let Token::OpenBracket = self.consume_token()? {
+                    self.parse_access(left_expression)?
+                } else { bail!("Invalid operator for infix operation found!") };
 
                 left_expression = infix;
             } else { break; }
         }
 
-        Some(left_expression)
+        Ok(left_expression)
     }
 
-    fn parse_number_literal(value: Literal) -> Option<Expression> {
+    fn parse_number_literal(value: Literal) -> anyhow::Result<Expression> {
         let string_representation = literal_to_string(&value);
         let type_ = if let Ok(_) = string_representation.parse::<u8>() {
             ValueType::U8
@@ -158,8 +161,8 @@ impl Parser {
             ValueType::U32
         } else if let Ok(_) = string_representation.parse::<u64>() {
             ValueType::U64
-        } else { return None; };
-        Some(Expression::NumberLiteral { value, internal_type: type_ })
+        } else { bail!("To big integer literal found!"); };
+        Ok(Expression::NumberLiteral { value, internal_type: type_ })
     }
 
     fn string_to_char_array(string: Literal) -> Vec<Expression> {
@@ -176,22 +179,22 @@ impl Parser {
         chars
     }
 
-    fn parse_grouped(&mut self) -> Option<Expression> {
-        let expression = self.parse_expression(Precedence::Lowest).unwrap();
-        if let Token::ClosedParent = self.tokens.remove(0) {} else { return None; };
-        Some(expression)
+    fn parse_grouped(&mut self) -> anyhow::Result<Expression> {
+        let expression = self.parse_expression(Precedence::Lowest)?;
+        if let Token::ClosedParent = self.consume_token()? {} else { bail!("Grouped expression didnt end with ')'!") };
+        Ok(expression)
     }
 
-    fn parse_infix_expression(&mut self, left: Expression, operator: Operator) -> Option<Expression> {
+    fn parse_infix_expression(&mut self, left: Expression, operator: Operator) -> anyhow::Result<Expression> {
         match operator {
             Operator::Plus |
             Operator::Minus |
             Operator::Times |
             Operator::Divide => {}
-            _ => return None
+            _ => bail!("Found invalid infix operator!")
         }
-        let right = self.parse_expression(operator.get_precedence().unwrap()).unwrap();
-        Some(
+        let right = self.parse_expression(operator.get_precedence()?)?;
+        Ok(
             Expression::Operation {
                 lhs: Box::new(left),
                 operator,
@@ -202,71 +205,88 @@ impl Parser {
         )
     }
 
-    fn parse_prefix_expression(&mut self, operator: Operator) -> Option<Expression> {
-        let right = self.parse_expression(Precedence::Prefix).unwrap();
+    fn parse_prefix_expression(&mut self, operator: Operator) -> anyhow::Result<Expression> {
+        let right = self.parse_expression(Precedence::Prefix)?;
+
         let expression = match operator {
             Operator::Times => Expression::Deref { value: Box::new(right) },
             Operator::And => Expression::Reference { reference: Box::new(right) },
-            _ => return None
+            _ => bail!("Found invalid prefix operator!")
         };
 
-        Some(expression)
+        Ok(expression)
     }
 
-    fn parse_array(&mut self) -> Option<Expression> {
+    fn parse_array(&mut self) -> anyhow::Result<Expression> {
         let mut content: Vec<Expression> = vec![];
 
         loop {
-            let expression = self.parse_expression(Precedence::Lowest).unwrap();
+            let expression = self.parse_expression(Precedence::Lowest)?;
             content.push(expression);
 
-            if let Token::Comma = &self.tokens[0] {
-                self.tokens.remove(0);
+            if let Token::Comma = self.peek_token()? {
+                self.consume_token()?;
             } else {
                 break;
             }
         }
-        if let Token::ClosedBracket = self.tokens.remove(0) {} else { return None; }
+        if let Token::ClosedBracket = self.consume_token()? {} else { bail!("Array expression didnt end with ']'!") }
 
-        Some(Expression::Array { content })
+        Ok(Expression::Array { content })
     }
 
-    fn parse_access(&mut self, left: Expression) -> Option<Expression> {
-        let expression = self.parse_expression(Precedence::Lowest).unwrap();
-        if let Token::ClosedBracket = self.tokens.remove(0) {} else { return None; }
-        Some(Expression::Access { value: Box::new(left), index: Box::new(expression) })
+    fn parse_access(&mut self, left: Expression) -> anyhow::Result<Expression> {
+        let expression = self.parse_expression(Precedence::Lowest)?;
+
+        if let Token::ClosedBracket = self.consume_token()? {} else { bail!("Access expression didnt end with ']'!") }
+        Ok(Expression::Access { value: Box::new(left), index: Box::new(expression) })
     }
 
-    fn get_keyword(&mut self) -> Option<Token> {
-        match &self.tokens[0] {
-            Token::Keyword { .. } => Some(self.tokens.remove(0)),
-            _ => None
+    fn get_keyword(&mut self) -> anyhow::Result<Token> {
+        match self.tokens.peek() {
+            Some(Token::Keyword { .. }) => Ok(self.consume_token()?),
+            _ => bail!("There is no following keyword token!")
         }
     }
 
-    fn get_literal(&mut self) -> Option<Token> {
-        match &self.tokens[0] {
-            Token::Literal { .. } => Some(self.tokens.remove(0)),
-            _ => None
+    fn get_literal(&mut self) -> anyhow::Result<Token> {
+        match self.tokens.peek() {
+            Some(Token::Literal { .. }) => Ok(self.consume_token()?),
+            _ => bail!("There is no following literal token!")
         }
     }
 
-    fn get_type(&mut self) -> Option<Token> {
-        match &self.tokens[0] {
-            Token::Type { .. } => Some(self.tokens.remove(0)),
-            _ => None
+    fn get_type(&mut self) -> anyhow::Result<Token> {
+        match self.tokens.peek() {
+            Some(Token::Type { .. }) => Ok(self.consume_token()?),
+            _ => bail!("There is no following type token!")
         }
     }
 
-    fn get_operation(&mut self) -> Option<Token> {
-        match &self.tokens[0] {
-            Token::Operation { .. } => Some(self.tokens.remove(0)),
-            _ => None
+    fn get_operation(&mut self) -> anyhow::Result<Token> {
+        match self.tokens.peek() {
+            Some(Token::Operation { .. }) => Ok(self.consume_token()?),
+            _ => bail!("There is no following operator token!")
         }
     }
 
-    fn peek_precedence(&mut self) -> Option<Precedence> {
-        self.tokens[0].get_precedence()
+    fn consume_token(&mut self) -> anyhow::Result<Token> {
+        if self.tokens.peek().is_none() { bail!("Tried to consume token but ran out of tokens!") }
+        return Ok(self.tokens.next().expect("THIS WILL NEVER OCCUR!"));
+    }
+
+    fn peek_token(&mut self) -> anyhow::Result<&Token> {
+        match self.tokens.peek() {
+            Some(token) => Ok(token),
+            None => bail!("Tried to peek token but there are no more tokens!"),
+        }
+    }
+
+    fn peek_precedence(&mut self) -> anyhow::Result<Precedence> {
+        match self.tokens.peek() {
+            Some(token) => Ok(token.get_precedence()?),
+            None => bail!("Tried to peek precedence but there are no more tokens!"),
+        }
     }
 }
 
@@ -280,26 +300,26 @@ enum Precedence {
 }
 
 impl Token {
-    fn get_precedence(&self) -> Option<Precedence> {
+    fn get_precedence(&self) -> anyhow::Result<Precedence> {
         match self {
             Token::Operation {
                 operator
             } => operator.get_precedence(),
-            Token::OpenBracket => Some(Precedence::Postfix),
-            _ => None
+            Token::OpenBracket => Ok(Precedence::Postfix),
+            _ => bail!("Tried to get precedence of token that doesnt have a precedence!")
         }
     }
 }
 
 impl Operator {
-    fn get_precedence(&self) -> Option<Precedence> {
+    fn get_precedence(&self) -> anyhow::Result<Precedence> {
         match self {
             Operator::Plus |
-            Operator::Minus => Some(Precedence::Sum),
+            Operator::Minus => Ok(Precedence::Sum),
             Operator::Times |
-            Operator::Divide => Some(Precedence::Product),
-            Operator::And => Some(Precedence::Prefix),
-            _ => None
+            Operator::Divide => Ok(Precedence::Product),
+            Operator::And => Ok(Precedence::Prefix),
+            _ => bail!("Tried to get precedence of operation that doesnt have a precedence!")
         }
     }
 }

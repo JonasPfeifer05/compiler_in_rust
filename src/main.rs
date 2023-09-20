@@ -4,20 +4,22 @@ pub mod semantic_analysis;
 
 
 use std::fs;
+use std::str::Chars;
 use crate::parser::Parser;
 use crate::semantic_analysis::symbol_table::SymbolTable;
 use crate::tokenizer::Tokenizer;
 
 fn main() {
 
-    let input: Vec<_> = fs::read("res/script.he").expect("Unknown file!")
-        .iter()
-        .map(|char| *char as char)
-        .collect();
+    let input_string: String = fs::read_to_string("res/script.he").expect("Unknown file!");
+    let input_chars: Chars = input_string.chars();
 
-    let tokens = Tokenizer::new(input).tokenize();
+    let tokens = Tokenizer::new(input_chars.peekable()).tokenize()
+        .into_iter()
+        .peekable();
 
-    tokens.iter()
+    tokens
+        .clone()
         .for_each(|token| println!("{}", token));
 
     println!();
