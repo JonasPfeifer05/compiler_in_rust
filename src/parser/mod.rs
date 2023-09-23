@@ -25,7 +25,12 @@ impl Parser {
         let mut statements = vec![];
 
         while self.tokens.peek().is_some() {
-            statements.push(self.parse_statement().unwrap())
+            match self.parse_statement() {
+                Ok(statement) => statements.push(statement),
+                Err(error) => {
+                    eprintln!("ERROR WHILE PARSING: {}", error);
+                }
+            }
         }
 
         statements
@@ -134,18 +139,16 @@ impl Parser {
             _ => bail!("Invalid token found inside expression!")
         };
 
-        loop {
-            if let Ok(operator_precedence) = self.peek_precedence() {
-                if !(precedence < operator_precedence) { break; }
+        while let Ok(operator_precedence) = self.peek_precedence() {
+            if precedence >= operator_precedence { break; }
 
-                let infix = if let Ok(Token::Operation { operator }) = self.get_operation() {
-                    self.parse_infix_expression(left_expression, operator)?
-                } else if let Token::OpenBracket = self.consume_token()? {
-                    self.parse_access(left_expression)?
-                } else { bail!("Invalid operator for infix operation found!") };
+            let infix = if let Ok(Token::Operation { operator }) = self.get_operation() {
+                self.parse_infix_expression(left_expression, operator)?
+            } else if let Token::OpenBracket = self.consume_token()? {
+                self.parse_access(left_expression)?
+            } else { bail!("Invalid operator for infix operation found!") };
 
-                left_expression = infix;
-            } else { break; }
+            left_expression = infix;
         }
 
         Ok(left_expression)
@@ -153,13 +156,13 @@ impl Parser {
 
     fn parse_number_literal(value: Literal) -> anyhow::Result<Expression> {
         let string_representation = literal_to_string(&value);
-        let type_ = if let Ok(_) = string_representation.parse::<u8>() {
+        let type_ = if string_representation.parse::<u8>().is_ok() {
             ValueType::U8
-        } else if let Ok(_) = string_representation.parse::<u16>() {
+        } else if string_representation.parse::<u16>().is_ok() {
             ValueType::U16
-        } else if let Ok(_) = string_representation.parse::<u32>() {
+        } else if string_representation.parse::<u32>().is_ok() {
             ValueType::U32
-        } else if let Ok(_) = string_representation.parse::<u64>() {
+        } else if string_representation.parse::<u64>().is_ok() {
             ValueType::U64
         } else { bail!("To big integer literal found!"); };
         Ok(Expression::NumberLiteral { value, internal_type: type_ })
@@ -272,7 +275,7 @@ impl Parser {
 
     fn consume_token(&mut self) -> anyhow::Result<Token> {
         if self.tokens.peek().is_none() { bail!("Tried to consume token but ran out of tokens!") }
-        return Ok(self.tokens.next().expect("THIS WILL NEVER OCCUR!"));
+        Ok(self.tokens.next().expect("THIS WILL NEVER OCCUR!"))
     }
 
     fn peek_token(&mut self) -> anyhow::Result<&Token> {

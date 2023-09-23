@@ -12,6 +12,9 @@ regex = "1.9.5"
 lazy_static = "1.4.0"
 criterion = "0.5.1"
 
+[profile.release]
+debug = true
+
 [[bench]]
 name="compile"
 harness=false
