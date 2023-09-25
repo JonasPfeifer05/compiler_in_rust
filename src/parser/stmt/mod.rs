@@ -24,6 +24,7 @@ pub enum Statement {
 
 impl Statement {
     pub fn resolve(&mut self, symbol_table: &mut SymbolTable) {
+        println!("{:?}", self);
         match self {
             Statement::Let { type_, expression, identifier } => {
                 if let Some(expression) = expression {

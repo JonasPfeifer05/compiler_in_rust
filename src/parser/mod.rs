@@ -168,15 +168,15 @@ impl Parser {
 
     fn parse_number_literal(value: Literal) -> anyhow::Result<Expression> {
         let string_representation = literal_to_string(&value);
-        let type_ = if string_representation.parse::<u8>().is_ok() {
-            ValueType::U8
-        } else if string_representation.parse::<u16>().is_ok() {
-            ValueType::U16
-        } else if string_representation.parse::<u32>().is_ok() {
-            ValueType::U32
-        } else if string_representation.parse::<u64>().is_ok() {
-            ValueType::U64
-        } else { bail!("To big integer literal found!"); };
+        let type_ = if let Ok(huge_int) = string_representation.parse::<u128>() {
+            if huge_int <= u8::MAX as u128 { ValueType::U8 }
+            else if huge_int <= u16::MAX as u128 { ValueType::U16 }
+            else if huge_int <= u32::MAX as u128 { ValueType::U32 }
+            else if huge_int <= u64::MAX as u128 { ValueType::U64 }
+            else { unreachable!() }
+        } else {
+            bail!("To big integer literal found!");
+        };
         Ok(Expression::NumberLiteral { value, internal_type: type_ })
     }
 
