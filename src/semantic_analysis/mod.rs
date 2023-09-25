@@ -135,7 +135,7 @@ impl Expression {
                         ValueType::Array { content_type, .. } => *content_type.clone(),
                         _ => *points_to.clone(),
                     },
-                    ValueType::Array { content_type, .. } => *content_type,
+                    ValueType::Array { content_type, .. } => ValueType::Pointer { points_to: content_type.clone() },
                     _ => unreachable!()
                 }
             }

@@ -1,0 +1,78 @@
+Source code (.he)
+
+let array: [u8, 3] = [0,1,2];
+let a: &u8 = array[0];
+a[2] = 3;
+
+let b: u32 = a + 1000;
+
+let c: u16 = b as u16;
+
+let character: char = 9;
+let ascii: u8 = 'a';
+let byte_of_character: u8 = character;
+
+let array_two: [u16, 2] = [2000, 1000];
+array_two[0] = 10;
+
+TAC (IR):
+
+// let array: [u8, 3] = [0,1,2];
+// array init is wrong
+array = u8_array(0,1,2,3,4,5,6,7,8,9)
+
+// let a: &u8 = array[0];
+t2 = u8(0)
+t3 = cast_u8_u64(t2)
+t4 = t3 * size_of(u8)
+a = &t1 + t4
+
+// a[2] = 3;
+t6 = u8(2)
+t7 = cast_u8_u64(t6)
+t8 = t7 * size_of(u8)
+t9 = u8(3)
+*t8 = t9
+
+// let b: u32 = a + 1000;
+t8 = *t4
+t9 = cast_u8_u16(t8)
+t10 = u16(1000)
+t11 = t9 + t10
+t12 = cast_u16_u32(t11)
+b = t12
+
+// let c: u16 = b as u16;
+t13 = b
+t14 = cast_u32_u16(t13)
+c = t14
+
+// let character: char = 9;
+t15 = 9
+t16 = cast_u8_char(t15)
+character = t16
+
+// let ascii: u8 = 'a';
+t17 = 'a'
+t18 = cast_u8_char(t17)
+ascii = t18
+
+// let byte_of_character: u8 = character;
+t19 = character
+t20 = cast_char_u8(t19)
+byte_of_character = t20
+
+// let array_two: [u16, 2] = [2000, 1000];
+t21 = u16(2000)
+t22 = u16(1000)
+t23 = [t21, t22]
+array_two = t23
+
+// array_two[0] = 10;
+t24 = &array_two
+t25 = u8(0)
+t26 = cast_u8_u64(t25)
+t27 = t24 + t26
+t28 = u8(10)
+t29 = cast_u8_u16(t28)
+*t27 = t29

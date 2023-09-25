@@ -1,11 +1,13 @@
 let array: [u8, 10] = [0,1,2,3,4,5,6,7,8,9];
-let a: &u8 = &array[0];
+let a: &u8 = array[0];
+a[2] = 3;
 
 let b: u32 = a + 1000;
 
 let c: u16 = b as u16;
 
 let character: char = 9;
+let ascii: u8 = 'a';
 let byte_of_character: u8 = character;
 
 let array_two: [u16, 2] = [2000, 1000];
