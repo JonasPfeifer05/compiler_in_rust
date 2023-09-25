@@ -37,17 +37,26 @@ impl ValueType {
         match self {
             ValueType::U64 => collection!(
                 ValueType::U64 => CastVariant::Explicit,
+                ValueType::U32 => CastVariant::Implicit,
+                ValueType::U16 => CastVariant::Implicit,
+                ValueType::U8 => CastVariant::Implicit,
+
                 ValueType::Char => CastVariant::Implicit,
             ),
             ValueType::U32 => collection!(
                 ValueType::U64 => CastVariant::Explicit,
                 ValueType::U32 => CastVariant::Explicit,
+                ValueType::U16 => CastVariant::Implicit,
+                ValueType::U8 => CastVariant::Implicit,
+
                 ValueType::Char => CastVariant::Implicit,
             ),
             ValueType::U16 => collection!(
                 ValueType::U64 => CastVariant::Explicit,
                 ValueType::U32 => CastVariant::Explicit,
                 ValueType::U16 => CastVariant::Explicit,
+                ValueType::U8 => CastVariant::Implicit,
+
                 ValueType::Char => CastVariant::Implicit,
             ),
             ValueType::U8 => collection!(
@@ -59,7 +68,11 @@ impl ValueType {
             ),
             ValueType::Char => collection!(
                 ValueType::Char => CastVariant::Explicit,
+
                 ValueType::U8 => CastVariant::Explicit,
+                ValueType::U16 => CastVariant::Explicit,
+                ValueType::U32 => CastVariant::Explicit,
+                ValueType::U64 => CastVariant::Explicit,
             ),
             ValueType::Pointer { .. } => collection!(
                 self.clone() => CastVariant::Explicit,

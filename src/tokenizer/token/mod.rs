@@ -130,6 +130,7 @@ pub enum Operator {
     Divide,
     And,
     Assign,
+    As,
 }
 
 impl Display for Operator {
@@ -141,6 +142,7 @@ impl Display for Operator {
             Operator::Divide => f.write_char('/'),
             Operator::And => f.write_char('&'),
             Operator::Assign => f.write_char('='),
+            Operator::As => f.write_str("as")
         }
     }
 }

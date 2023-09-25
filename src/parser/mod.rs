@@ -138,7 +138,10 @@ impl Parser {
             if let Ok(operator_precedence) = self.peek_precedence() {
                 if !(precedence < operator_precedence) { break; }
 
-                let infix = if let Ok(Token::Operation { operator }) = self.get_operation() {
+                let operation = self.get_operation();
+                let infix = if let Ok(Token::Operation { operator: Operator::As }) = operation {
+                    self.parse_cast(left_expression)?
+                } else if let Ok(Token::Operation { operator }) = operation {
                     self.parse_infix_expression(left_expression, operator)?
                 } else if let Token::OpenBracket = self.consume_token()? {
                     self.parse_access(left_expression)?
@@ -149,6 +152,15 @@ impl Parser {
         }
 
         Ok(left_expression)
+    }
+
+    fn parse_cast(&mut self, lhs: Expression) -> anyhow::Result<Expression> {
+        let to = self.parse_type()?;
+
+        Ok(Expression::Cast {
+            value: Box::new(lhs),
+            to,
+        })
     }
 
     fn parse_number_literal(value: Literal) -> anyhow::Result<Expression> {
@@ -316,6 +328,7 @@ impl Operator {
         match self {
             Operator::Plus |
             Operator::Minus => Ok(Precedence::Sum),
+            Operator::As |
             Operator::Times |
             Operator::Divide => Ok(Precedence::Product),
             Operator::And => Ok(Precedence::Prefix),

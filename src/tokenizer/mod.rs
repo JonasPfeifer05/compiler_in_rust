@@ -90,6 +90,9 @@ impl<'a> Tokenizer<'a> {
 
         Ok(
             match literal.as_slice() {
+                b"as" => Token::Operation {
+                    operator: Operator::As
+                },
                 b"exit" | b"let" | b"print" => Token::Keyword {
                     keyword: match literal.as_slice() {
                         b"let" => Keyword::Let,

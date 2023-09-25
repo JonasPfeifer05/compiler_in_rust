@@ -3,6 +3,8 @@ let a: &u8 = &array[0];
 
 let b: u32 = a + 1000;
 
+let c: u16 = b as u16;
+
 let character: char = 9;
 let byte_of_character: u8 = character;
 
